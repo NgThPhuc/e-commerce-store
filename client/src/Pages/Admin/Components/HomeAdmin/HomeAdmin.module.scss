@@ -1,0 +1,77 @@
+.wrapper {
+    padding: 24px;
+    background-color: #f0f2f5;
+    min-height: 100vh;
+}
+
+.title {
+    margin-bottom: 24px;
+    color: #1f1f1f;
+    font-size: 24px;
+    font-weight: 500;
+}
+
+.stats-row {
+    margin-bottom: 24px;
+}
+
+.recent-orders {
+    margin-top: 24px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+    &:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.revenue-chart {
+    margin-bottom: 24px;
+    padding: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+
+    &:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.stat-card {
+    transition: all 0.3s ease;
+
+    &:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+}
+
+.orders-table {
+    :global {
+        .ant-table-thead > tr > th {
+            background: #fafafa;
+            font-weight: 500;
+        }
+
+        .ant-table-tbody > tr:hover > td {
+            background: #f5f5f5;
+        }
+
+        .ant-table-pagination {
+            margin: 16px 0;
+        }
+    }
+}
+
+// Responsive styles
+@media (max-width: 768px) {
+    .wrapper {
+        padding: 16px;
+    }
+
+    .title {
+        font-size: 20px;
+        margin-bottom: 16px;
+    }
+}
