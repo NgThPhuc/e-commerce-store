@@ -13,9 +13,9 @@ function HomePage() {
                 <SideHome />
             </div>
 
-            <div>
+            {/* <div>
                 <ItemProducts />
-            </div>
+            </div> */}
 
             <div>
                 <ProductSell />

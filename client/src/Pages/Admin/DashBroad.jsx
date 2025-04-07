@@ -49,7 +49,7 @@ function DashBroad() {
                 <div className={cx('slide__bar')}>
                     <Link to={'/'}>
                         <div className={cx('header')}>
-                            <img src={'https://5sfashion.vn/frontend/assets/images/logo.png'} alt="" />
+                            <span className={cx('store-name')}>NTPS_STORE</span>
                         </div>
                     </Link>
 

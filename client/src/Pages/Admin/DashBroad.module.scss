@@ -13,6 +13,26 @@
     cursor: pointer;
     font-weight: 400;
 
+    .header {
+        padding: 20px;
+        margin-bottom: 20px;
+        
+        .store-name {
+            font-size: 26px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #e67e22 0%, #f39c12 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+            transition: all 0.3s ease;
+
+            &:hover {
+                transform: scale(1.05);
+            }
+        }
+    }
+
     h4 {
         padding: 10px 20px;
         font-size: 16px;

@@ -3,10 +3,9 @@ import styles from './Blogs.module.scss';
 import Header from '../../Components/Header/Header';
 import Footer from '../../Components/Footer/Footer';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faCalendarDays } from '@fortawesome/free-solid-svg-icons';
+import { faCalendarDays, faUser, faArrowRight } from '@fortawesome/free-solid-svg-icons';
 import { useEffect, useState } from 'react';
 import { requestGetBlogs } from '../../config/request';
-
 import dayjs from 'dayjs';
 import { Link } from 'react-router-dom';
 
@@ -29,20 +28,46 @@ function Blogs() {
                 <Header />
             </header>
 
+            <div className={cx('blog-header')}>
+                <h1>Bài Viết Mới Nhất</h1>
+                <p>Cập nhật những xu hướng thời trang mới nhất</p>
+            </div>
+
             <main className={cx('main-content')}>
-                {dataBlogs.map((item) => (
-                    <Link to={`/bai-viet/${item._id}`}>
-                        <div className={cx('inner')}>
-                            <img src={item.image} alt="" />
-                            <div className={cx('content')}>
-                                <h1>{item.title}</h1>
-                                <FontAwesomeIcon icon={faCalendarDays} />
-                                <span>{dayjs(item.createdAt).format('DD/MM/YYYY')}</span>
-                                <p dangerouslySetInnerHTML={{ __html: item.content }} />
+                <div className={cx('blog-grid')}>
+                    {dataBlogs.map((item) => (
+                        <Link to={`/bai-viet/${item._id}`} key={item._id} className={cx('blog-card')}>
+                            <div className={cx('image-wrapper')}>
+                                <img src={item.image} alt={item.title} />
                             </div>
-                        </div>
-                    </Link>
-                ))}
+                            <div className={cx('card-content')}>
+                                <div className={cx('meta-info')}>
+                                    <span className={cx('date')}>
+                                        <FontAwesomeIcon icon={faCalendarDays} />
+                                        {dayjs(item.createdAt).format('DD/MM/YYYY')}
+                                    </span>
+                                    <span className={cx('author')}>
+                                        <FontAwesomeIcon icon={faUser} />
+                                        Admin
+                                    </span>
+                                </div>
+                                <h2>{item.title}</h2>
+                                <div 
+                                    className={cx('excerpt')} 
+                                    dangerouslySetInnerHTML={{ 
+                                        __html: item.content.length > 150 
+                                            ? item.content.substring(0, 150) + '...' 
+                                            : item.content 
+                                    }} 
+                                />
+                                <div className={cx('read-more')}>
+                                    Đọc thêm
+                                    <FontAwesomeIcon icon={faArrowRight} />
+                                </div>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
             </main>
 
             <footer>
