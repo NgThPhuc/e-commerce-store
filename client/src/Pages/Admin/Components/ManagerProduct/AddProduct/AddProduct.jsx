@@ -22,7 +22,6 @@ import {
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { requestCreateProduct, requestUploadImage } from '../../../../../config/request';
-
 import toast, { Toaster } from 'react-hot-toast';
 
 const cx = classNames.bind(styles);
@@ -31,195 +30,151 @@ function AddProduct() {
     const [productData, setProductData] = useState({
         name: '',
         category: '',
-        gender: '',
+        brand: '',
         price: '',
         stock: '',
         description: '',
         images: [],
         attributes: {
-            size: '',
-            color: '',
+            scale: '',
+            series: '',
+            grade: '',
             material: '',
-            brand: '',
         },
     });
 
+    const [loading, setLoading] = useState(false);
+
     const categories = [
-        { value: 'ao', label: 'Áo' },
-        { value: 'quan', label: 'Quần' },
-        { value: 'vay', label: 'Váy' },
-        { value: 'dam', label: 'Đầm' },
+        { value: 'model_kit', label: 'Model Kit' },
+        { value: 'metal_build', label: 'Metal Build' },
+        { value: 'figure', label: 'Figure' },
+        { value: 'dung_cu', label: 'Dụng cụ' },
         { value: 'phu_kien', label: 'Phụ kiện' },
-        { value: 'giay_dep', label: 'Giày dép' },
-        { value: 'tui_xach', label: 'Túi xách' },
     ];
 
-    const genders = [
-        { value: 'nam', label: 'Nam' },
-        { value: 'nu', label: 'Nữ' },
-        { value: 'unisex', label: 'Unisex' },
+    const brands = [
+        { value: 'bandai', label: 'Bandai' },
+        { value: 'moshow', label: 'Moshow' },
+        { value: 'dragon', label: 'Dragon' },
+        { value: 'tamiya', label: 'Tamiya' },
+        { value: 'other', label: 'Other' },
     ];
 
-    const categoryAttributes = {
-        ao: [
-            { name: 'size', label: 'Kích thước', type: 'text' },
-            { name: 'color', label: 'Màu sắc', type: 'text' },
-            { name: 'material', label: 'Chất liệu', type: 'text' },
-            { name: 'brand', label: 'Thương hiệu', type: 'text' },
-        ],
-        quan: [
-            { name: 'size', label: 'Kích thước', type: 'text' },
-            { name: 'color', label: 'Màu sắc', type: 'text' },
-            { name: 'material', label: 'Chất liệu', type: 'text' },
-            { name: 'brand', label: 'Thương hiệu', type: 'text' },
-        ],
-        vay: [
-            { name: 'size', label: 'Kích thước', type: 'text' },
-            { name: 'color', label: 'Màu sắc', type: 'text' },
-            { name: 'material', label: 'Chất liệu', type: 'text' },
-            { name: 'brand', label: 'Thương hiệu', type: 'text' },
-        ],
-        dam: [
-            { name: 'size', label: 'Kích thước', type: 'text' },
-            { name: 'color', label: 'Màu sắc', type: 'text' },
-            { name: 'material', label: 'Chất liệu', type: 'text' },
-            { name: 'brand', label: 'Thương hiệu', type: 'text' },
-        ],
-        phu_kien: [
-            { name: 'color', label: 'Màu sắc', type: 'text' },
-            { name: 'material', label: 'Chất liệu', type: 'text' },
-            { name: 'brand', label: 'Thương hiệu', type: 'text' },
-        ],
-        giay_dep: [
-            { name: 'size', label: 'Kích thước', type: 'text' },
-            { name: 'color', label: 'Màu sắc', type: 'text' },
-            { name: 'brand', label: 'Thương hiệu', type: 'text' },
-        ],
-        tui_xach: [
-            { name: 'color', label: 'Màu sắc', type: 'text' },
-            { name: 'material', label: 'Chất liệu', type: 'text' },
-            { name: 'brand', label: 'Thương hiệu', type: 'text' },
-        ],
-    };
+    const grades = [
+        { value: 'hg', label: 'High Grade (HG)' },
+        { value: 'rg', label: 'Real Grade (RG)' },
+        { value: 'mg', label: 'Master Grade (MG)' },
+        { value: 'pg', label: 'Perfect Grade (PG)' },
+    ];
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        if (name === 'category') {
+    const handleInputChange = (field, value) => {
+        if (field.includes('.')) {
+            const [parent, child] = field.split('.');
             setProductData((prev) => ({
                 ...prev,
-                [name]: value,
-                attributes: {
-                    size: '',
-                    color: '',
-                    material: '',
-                    brand: '',
-                },
-            }));
-        } else if (name.startsWith('attr_')) {
-            const attributeName = name.replace('attr_', '');
-            setProductData((prev) => ({
-                ...prev,
-                attributes: {
-                    ...prev.attributes,
-                    [attributeName]: value,
+                [parent]: {
+                    ...prev[parent],
+                    [child]: value,
                 },
             }));
         } else {
             setProductData((prev) => ({
                 ...prev,
-                [name]: value,
+                [field]: value,
             }));
         }
     };
 
-    const handleEditorChange = (content) => {
+    const handleImageUpload = async (event) => {
+        const files = event.target.files;
+        if (files.length > 0) {
+            setLoading(true);
+            try {
+                const formData = new FormData();
+                formData.append('image', files[0]);
+
+                const response = await requestUploadImage(formData);
+                if (response.metadata) {
+                    setProductData((prev) => ({
+                        ...prev,
+                        images: [...prev.images, response.metadata],
+                    }));
+                    toast.success('Tải ảnh lên thành công');
+                }
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                toast.error('Lỗi khi tải ảnh lên');
+            } finally {
+                setLoading(false);
+            }
+        }
+    };
+
+    const handleRemoveImage = (index) => {
         setProductData((prev) => ({
             ...prev,
-            description: content,
+            images: prev.images.filter((_, i) => i !== index),
         }));
     };
 
-    const handleImageChange = async (e) => {
-        const files = Array.from(e.target.files);
-        const formData = new FormData();
-        files.forEach((file) => {
-            formData.append('images', file);
-        });
-        formData.append('typeImages', 'product');
-        const res = await requestUploadImage(formData);
-        setProductData((prev) => ({
-            ...prev,
-            images: [...prev.images, ...res.metadata],
-        }));
-    };
+    const handleSubmit = async (event) => {
+        event.preventDefault();
+        setLoading(true);
 
-    console.log(productData.images);
-
-    const handleRemoveImage = (indexToRemove) => {
-        setProductData((prev) => ({
-            ...prev,
-            images: prev.images.filter((_, index) => index !== indexToRemove),
-        }));
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
         try {
-            const res = await requestCreateProduct(productData);
-            toast.success(res.message);
+            const response = await requestCreateProduct(productData);
+            if (response.metadata) {
+                toast.success('Thêm sản phẩm thành công');
+                setProductData({
+                    name: '',
+                    category: '',
+                    brand: '',
+                    price: '',
+                    stock: '',
+                    description: '',
+                    images: [],
+                    attributes: {
+                        scale: '',
+                        series: '',
+                        grade: '',
+                        material: '',
+                    },
+                });
+            }
         } catch (error) {
-            toast.error(error.response.data.message);
+            console.error('Error creating product:', error);
+            toast.error('Lỗi khi thêm sản phẩm');
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
-        <Box className={cx('wrapper')} sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
-            <Toaster />
-            <Paper
-                elevation={0}
-                sx={{
-                    p: 4,
-                    borderRadius: 2,
-                    backgroundColor: 'white',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
-                }}
-            >
-                <form onSubmit={handleSubmit}>
-                    <Grid container spacing={3}>
-                        <Grid item xs={12}>
-                            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500, color: '#455a64' }}>
-                                Thông tin cơ bản
-                            </Typography>
-                            <Divider sx={{ mb: 3 }} />
-                        </Grid>
+        <Box component="form" onSubmit={handleSubmit} sx={{ p: 3 }}>
+            <Typography variant="h5" gutterBottom>
+                Thêm sản phẩm mới
+            </Typography>
+            <Divider sx={{ mb: 3 }} />
 
-                        <Grid item xs={12} sm={6}>
+            <Grid container spacing={3}>
+                <Grid item xs={12} md={8}>
+                    <Paper sx={{ p: 3 }}>
+                        <Stack spacing={3}>
                             <TextField
                                 required
                                 fullWidth
                                 label="Tên sản phẩm"
-                                name="name"
                                 value={productData.name}
-                                onChange={handleChange}
-                                variant="outlined"
-                                sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                        '&:hover fieldset': {
-                                            borderColor: '#1a237e',
-                                        },
-                                    },
-                                }}
+                                onChange={(e) => handleInputChange('name', e.target.value)}
                             />
-                        </Grid>
 
-                        <Grid item xs={12} sm={6}>
                             <FormControl fullWidth required>
                                 <InputLabel>Danh mục</InputLabel>
                                 <Select
-                                    name="category"
                                     value={productData.category}
                                     label="Danh mục"
-                                    onChange={handleChange}
+                                    onChange={(e) => handleInputChange('category', e.target.value)}
                                 >
                                     {categories.map((category) => (
                                         <MenuItem key={category.value} value={category.value}>
@@ -228,214 +183,181 @@ function AddProduct() {
                                     ))}
                                 </Select>
                             </FormControl>
-                        </Grid>
 
-                        <Grid item xs={12} sm={6}>
                             <FormControl fullWidth required>
-                                <InputLabel>Giới tính</InputLabel>
+                                <InputLabel>Thương hiệu</InputLabel>
                                 <Select
-                                    name="gender"
-                                    value={productData.gender}
-                                    label="Giới tính"
-                                    onChange={handleChange}
+                                    value={productData.brand}
+                                    label="Thương hiệu"
+                                    onChange={(e) => handleInputChange('brand', e.target.value)}
                                 >
-                                    {genders.map((gender) => (
-                                        <MenuItem key={gender.value} value={gender.value}>
-                                            {gender.label}
+                                    {brands.map((brand) => (
+                                        <MenuItem key={brand.value} value={brand.value}>
+                                            {brand.label}
                                         </MenuItem>
                                     ))}
                                 </Select>
                             </FormControl>
-                        </Grid>
 
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                required
-                                fullWidth
-                                label="Giá"
-                                name="price"
-                                type="number"
-                                value={productData.price}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-
-                        <Grid item xs={12} sm={6}>
-                            <TextField
-                                fullWidth
-                                label="Số lượng tồn kho"
-                                name="stock"
-                                type="number"
-                                value={productData.stock}
-                                onChange={handleChange}
-                            />
-                        </Grid>
-
-                        {productData.category && (
-                            <>
-                                <Grid item xs={12}>
-                                    <Typography
-                                        variant="subtitle1"
-                                        sx={{ mt: 2, mb: 2, fontWeight: 500, color: '#455a64' }}
-                                    >
-                                        Thông tin chi tiết
-                                    </Typography>
-                                    <Divider sx={{ mb: 3 }} />
+                            <Grid container spacing={2}>
+                                <Grid item xs={6}>
+                                    <TextField
+                                        required
+                                        fullWidth
+                                        type="number"
+                                        label="Giá"
+                                        value={productData.price}
+                                        onChange={(e) => handleInputChange('price', e.target.value)}
+                                        InputProps={{
+                                            inputProps: { min: 0 },
+                                        }}
+                                    />
                                 </Grid>
+                                <Grid item xs={6}>
+                                    <TextField
+                                        required
+                                        fullWidth
+                                        type="number"
+                                        label="Số lượng trong kho"
+                                        value={productData.stock}
+                                        onChange={(e) => handleInputChange('stock', e.target.value)}
+                                        InputProps={{
+                                            inputProps: { min: 0 },
+                                        }}
+                                    />
+                                </Grid>
+                            </Grid>
 
-                                {categoryAttributes[productData.category]?.map((attr) => (
-                                    <Grid item xs={12} sm={6} key={attr.name}>
-                                        <TextField
-                                            required
-                                            fullWidth
-                                            label={attr.label}
-                                            name={`attr_${attr.name}`}
-                                            type={attr.type}
-                                            value={productData.attributes[attr.name] || ''}
-                                            onChange={handleChange}
-                                        />
-                                    </Grid>
-                                ))}
-                            </>
-                        )}
-                        <div style={{ width: '100%', padding: '15px' }}>
+                            {productData.category === 'model_kit' && (
+                                <FormControl fullWidth>
+                                    <InputLabel>Grade</InputLabel>
+                                    <Select
+                                        value={productData.attributes.grade}
+                                        label="Grade"
+                                        onChange={(e) => handleInputChange('attributes.grade', e.target.value)}
+                                    >
+                                        {grades.map((grade) => (
+                                            <MenuItem key={grade.value} value={grade.value}>
+                                                {grade.label}
+                                            </MenuItem>
+                                        ))}
+                                    </Select>
+                                </FormControl>
+                            )}
+
+                            {(productData.category === 'model_kit' ||
+                                productData.category === 'metal_build' ||
+                                productData.category === 'figure') && (
+                                <>
+                                    <TextField
+                                        fullWidth
+                                        label="Tỷ lệ"
+                                        value={productData.attributes.scale}
+                                        onChange={(e) => handleInputChange('attributes.scale', e.target.value)}
+                                        placeholder="Ví dụ: 1/144, 1/100"
+                                    />
+                                    <TextField
+                                        fullWidth
+                                        label="Series"
+                                        value={productData.attributes.series}
+                                        onChange={(e) => handleInputChange('attributes.series', e.target.value)}
+                                        placeholder="Ví dụ: Gundam, Dragon Ball"
+                                    />
+                                </>
+                            )}
+
+                            {(productData.category === 'dung_cu' || productData.category === 'phu_kien') && (
+                                <TextField
+                                    fullWidth
+                                    label="Chất liệu"
+                                    value={productData.attributes.material}
+                                    onChange={(e) => handleInputChange('attributes.material', e.target.value)}
+                                />
+                            )}
+
+                            <Typography variant="subtitle1" gutterBottom>
+                                Mô tả sản phẩm
+                            </Typography>
                             <Editor
-                                apiKey="hfm046cu8943idr5fja0r5l2vzk9l8vkj5cp3hx2ka26l84x"
+                                apiKey="tm5dadnc4s9g3p373vo61phwfnl3w5nli8ouwj0v2rnn6efj"
                                 init={{
-                                    plugins:
-                                        'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
-                                    toolbar:
-                                        'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
+                                    height: 500,
+                                    menubar: false,
+                                    plugins: [
+                                        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
+                                        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
+                                        'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
+                                    ],
+                                    toolbar: 'undo redo | blocks | ' +
+                                        'bold italic forecolor | alignleft aligncenter ' +
+                                        'alignright alignjustify | bullist numlist outdent indent | ' +
+                                        'removeformat | help',
+                                    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
                                 }}
-                                initialValue="Mô tả sản phẩm"
-                                onEditorChange={handleEditorChange}
+                                value={productData.description}
+                                onEditorChange={(content) => handleInputChange('description', content)}
                             />
-                        </div>
+                        </Stack>
+                    </Paper>
+                </Grid>
 
-                        <Grid item xs={12}>
-                            <Typography variant="subtitle1" sx={{ mt: 2, mb: 2, fontWeight: 500, color: '#455a64' }}>
+                <Grid item xs={12} md={4}>
+                    <Paper sx={{ p: 3 }}>
+                        <Stack spacing={3}>
+                            <Typography variant="subtitle1" gutterBottom>
                                 Hình ảnh sản phẩm
                             </Typography>
-                            <Divider sx={{ mb: 3 }} />
 
-                            <Box
-                                sx={{
-                                    border: '2px dashed #1a237e',
-                                    borderRadius: 2,
-                                    p: 3,
-                                    textAlign: 'center',
-                                    mb: 3,
-                                    backgroundColor: '#f5f5f5',
-                                }}
+                            <Button
+                                component="label"
+                                variant="outlined"
+                                startIcon={<CloudUploadIcon />}
+                                sx={{ mb: 2 }}
+                                disabled={loading}
                             >
-                                <input
-                                    type="file"
-                                    hidden
-                                    multiple
-                                    accept="image/*"
-                                    id="image-upload"
-                                    onChange={handleImageChange}
-                                />
-                                <label htmlFor="image-upload">
-                                    <Button
-                                        component="span"
-                                        variant="outlined"
-                                        startIcon={<CloudUploadIcon />}
-                                        sx={{
-                                            color: '#1a237e',
-                                            borderColor: '#1a237e',
-                                            '&:hover': {
-                                                borderColor: '#1a237e',
-                                                backgroundColor: 'rgba(26, 35, 126, 0.04)',
-                                            },
-                                        }}
-                                    >
-                                        Tải lên hình ảnh
-                                    </Button>
-                                </label>
-                                <Typography variant="body2" sx={{ mt: 1, color: '#666' }}>
-                                    Hỗ trợ: JPG, PNG (Tối đa 5MB)
-                                </Typography>
-                            </Box>
-                        </Grid>
+                                Tải ảnh lên
+                                <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
+                            </Button>
 
-                        {productData.images.length > 0 && (
-                            <Grid item xs={12}>
-                                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                                    {productData.images.map((image, index) => (
-                                        <Card
-                                            key={index}
-                                            sx={{
-                                                position: 'relative',
-                                                width: 150,
-                                                height: 150,
-                                                borderRadius: 2,
-                                            }}
-                                        >
-                                            <CardMedia
-                                                component="img"
-                                                image={image}
-                                                alt={`Preview ${index + 1}`}
-                                                sx={{
-                                                    height: '100%',
-                                                    objectFit: 'cover',
-                                                }}
-                                            />
+                            <Stack spacing={2}>
+                                {productData.images.map((image, index) => (
+                                    <Card key={index}>
+                                        <CardMedia
+                                            component="img"
+                                            height="200"
+                                            image={image}
+                                            alt={`Product image ${index + 1}`}
+                                            sx={{ objectFit: 'contain' }}
+                                        />
+                                        <Box sx={{ p: 1, display: 'flex', justifyContent: 'flex-end' }}>
                                             <IconButton
-                                                size="small"
-                                                sx={{
-                                                    position: 'absolute',
-                                                    top: 8,
-                                                    right: 8,
-                                                    backgroundColor: 'rgba(255,255,255,0.8)',
-                                                    '&:hover': {
-                                                        backgroundColor: 'rgba(255,255,255,0.9)',
-                                                    },
-                                                }}
+                                                color="error"
                                                 onClick={() => handleRemoveImage(index)}
+                                                disabled={loading}
                                             >
-                                                <DeleteIcon fontSize="small" />
+                                                <DeleteIcon />
                                             </IconButton>
-                                        </Card>
-                                    ))}
-                                </Box>
-                            </Grid>
-                        )}
+                                        </Box>
+                                    </Card>
+                                ))}
+                            </Stack>
+                        </Stack>
+                    </Paper>
 
-                        <Grid item xs={12}>
-                            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
-                                <Button
-                                    variant="outlined"
-                                    sx={{
-                                        minWidth: 120,
-                                        borderColor: '#1a237e',
-                                        color: '#1a237e',
-                                        '&:hover': {
-                                            borderColor: '#1a237e',
-                                            backgroundColor: 'rgba(26, 35, 126, 0.04)',
-                                        },
-                                    }}
-                                >
-                                    Hủy
-                                </Button>
-                                <Button
-                                    type="submit"
-                                    variant="contained"
-                                    sx={{
-                                        minWidth: 120,
-                                        backgroundColor: '#1a237e',
-                                        '&:hover': {
-                                            backgroundColor: '#0d1b6e',
-                                        },
-                                    }}
-                                >
-                                    Thêm sản phẩm
-                                </Button>
-                            </Box>
-                        </Grid>
-                    </Grid>
-                </form>
-            </Paper>
+                    <Box sx={{ mt: 3 }}>
+                        <Button
+                            type="submit"
+                            variant="contained"
+                            fullWidth
+                            size="large"
+                            disabled={loading}
+                        >
+                            {loading ? 'Đang xử lý...' : 'Thêm sản phẩm'}
+                        </Button>
+                    </Box>
+                </Grid>
+            </Grid>
+            <Toaster position="top-right" />
         </Box>
     );
 }

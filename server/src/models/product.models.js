@@ -6,13 +6,13 @@ const productSchema = new mongoose.Schema(
         category: {
             type: String,
             required: true,
-            enum: ['ao', 'quan', 'vay', 'dam', 'phu_kien', 'giay_dep', 'tui_xach'],
-        }, // Loại sản phẩm: áo, quần, váy, đầm, phụ kiện, giày dép, túi xách
-        gender: {
+            enum: ['model_kit', 'metal_build', 'figure', 'dung_cu', 'phu_kien'],
+        }, // Loại sản phẩm: Model Kit, Metal Build, Figure, Dụng cụ, Phụ kiện
+        brand: {
             type: String,
             required: true,
-            enum: ['nam', 'nu', 'unisex'],
-        }, // Giới tính: nam, nữ, unisex
+            enum: ['bandai', 'moshow', 'dragon', 'tamiya', 'other'],
+        }, // Thương hiệu: Bandai, Moshow, Dragon, Tamiya, Other
         price: { type: Number, required: true }, // Giá
         stock: { type: Number, default: 0 }, // Số lượng tồn kho
         description: { type: String }, // Mô tả sản phẩm
@@ -21,10 +21,10 @@ const productSchema = new mongoose.Schema(
             type: Map,
             of: String,
             default: {
-                size: '', // Kích thước: S, M, L, XL, XXL
-                color: '', // Màu sắc
+                scale: '', // Tỷ lệ: 1/144, 1/100, 1/60, etc.
+                series: '', // Series: Gundam, Dragon Ball, etc.
+                grade: '', // Grade: HG, RG, MG, PG (cho Model Kit)
                 material: '', // Chất liệu
-                brand: '', // Thương hiệu
             },
         }, // Thuộc tính sản phẩm
     },

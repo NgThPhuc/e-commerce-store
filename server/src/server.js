@@ -9,7 +9,10 @@ const cookiesParser = require('cookie-parser');
 const cors = require('cors');
 const path = require('path');
 
-app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
+app.use(cors({ 
+    origin: 'http://localhost:5173', // Vite's default development port
+    credentials: true 
+}));
 
 const connectDB = require('./config/connect');
 const routes = require('./routes/index');

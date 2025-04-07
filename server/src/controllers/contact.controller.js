@@ -16,7 +16,7 @@ class controllerContact {
 
     async getContact(req, res) {
         const contact = await modelContact.find({});
-        new OK({ message: 'Lấy thiing tin thành công', metadata: contact }).send(res);
+        new OK({ message: 'Lấy thông tin thành công', metadata: contact }).send(res);
     }
 
     async replyContact(req, res) {

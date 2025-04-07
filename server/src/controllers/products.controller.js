@@ -4,40 +4,38 @@ const { BadRequestError } = require('../core/error.response');
 
 class controllerProducts {
     async createProduct(req, res) {
-        const { name, category, gender, price, stock, description, attributes, images } = req.body;
+        const { name, category, brand, price, stock, description, attributes, images } = req.body;
 
         // Kiểm tra đầy đủ thông tin bắt buộc
-        if (!name || !category || !gender || !price || !stock || !description || !attributes || !images) {
+        if (!name || !category || !brand || !price || !stock || !description || !attributes || !images) {
             throw new BadRequestError('Vui lòng nhập đầy đủ thông tin sản phẩm');
         }
 
         // Kiểm tra category hợp lệ
-        const validCategories = ['ao', 'quan', 'vay', 'dam', 'phu_kien', 'giay_dep', 'tui_xach'];
+        const validCategories = ['model_kit', 'metal_build', 'figure', 'dung_cu', 'phu_kien'];
         if (!validCategories.includes(category)) {
             throw new BadRequestError('Danh mục sản phẩm không hợp lệ');
         }
 
-        // Kiểm tra gender hợp lệ
-        const validGenders = ['nam', 'nu', 'unisex'];
-        if (!validGenders.includes(gender)) {
-            throw new BadRequestError('Giới tính sản phẩm không hợp lệ');
+        // Kiểm tra brand hợp lệ
+        const validBrands = ['bandai', 'moshow', 'dragon', 'tamiya', 'other'];
+        if (!validBrands.includes(brand)) {
+            throw new BadRequestError('Thương hiệu sản phẩm không hợp lệ');
         }
 
         // Kiểm tra attributes theo category
-        let requiredAttributes = ['color', 'brand'];
+        let requiredAttributes = ['series'];
 
         switch (category) {
-            case 'ao':
-            case 'quan':
-            case 'vay':
-            case 'dam':
-                requiredAttributes.push('size', 'material');
+            case 'model_kit':
+                requiredAttributes.push('scale', 'grade');
                 break;
-            case 'giay_dep':
-                requiredAttributes.push('size');
+            case 'metal_build':
+            case 'figure':
+                requiredAttributes.push('scale');
                 break;
+            case 'dung_cu':
             case 'phu_kien':
-            case 'tui_xach':
                 requiredAttributes.push('material');
                 break;
         }
@@ -51,7 +49,7 @@ class controllerProducts {
         const newProduct = await modelProduct.create({
             name,
             category,
-            gender,
+            brand,
             price,
             stock,
             description,
@@ -86,23 +84,10 @@ class controllerProducts {
 
     async getProduct(req, res) {
         try {
-            const products = await modelProduct.find();
-
-            // Nhóm sản phẩm theo category
-            const categorizedProducts = products.reduce((acc, product) => {
-                if (!acc[product.category]) {
-                    acc[product.category] = [];
-                }
-                if (acc[product.category].length < 8) {
-                    // Giới hạn mỗi category 8 sản phẩm
-                    acc[product.category].push(product);
-                }
-                return acc;
-            }, {});
-
+            const products = await modelProduct.find().sort({ createdAt: -1 });
             new OK({
                 message: 'Lấy danh sách sản phẩm thành công',
-                metadata: categorizedProducts,
+                metadata: products,
             }).send(res);
         } catch (error) {
             new BadRequestError({
@@ -123,7 +108,19 @@ class controllerProducts {
 
     async filterProducts(req, res) {
         try {
-            const { category, minPrice, maxPrice, searchQuery, brand, origin, sortBy } = req.query;
+            // console.log('Filter params:', req.query); // Debug log
+
+            const { 
+                category, 
+                minPrice, 
+                maxPrice, 
+                searchQuery, 
+                brand,
+                scale,
+                series,
+                grade,
+                sortBy 
+            } = req.query;
 
             // Xây dựng query filter
             let filter = {};
@@ -147,13 +144,25 @@ class controllerProducts {
 
             // Filter theo thương hiệu
             if (brand) {
-                filter['attributes.brand'] = brand;
+                filter.brand = brand;
             }
 
-            // Filter theo xuất xứ
-            if (origin) {
-                filter['attributes.origin'] = origin;
+            // Filter theo tỷ lệ
+            if (scale) {
+                filter['attributes.scale'] = scale;
             }
+
+            // Filter theo series
+            if (series) {
+                filter['attributes.series'] = series;
+            }
+
+            // Filter theo grade
+            if (grade) {
+                filter['attributes.grade'] = grade;
+            }
+
+            console.log('MongoDB filter:', filter); // Debug log
 
             // Xây dựng options cho sort
             let sortOptions = {};
@@ -165,19 +174,25 @@ class controllerProducts {
                     case 'price_desc':
                         sortOptions = { price: -1 };
                         break;
+                    case 'newest':
+                        sortOptions = { createdAt: -1 };
+                        break;
                     default:
                         sortOptions = { createdAt: -1 };
                 }
             }
 
             // Thực hiện query với filter và sort
-            const products = await modelProduct.find(filter).sort(sortOptions);
+            const products = await modelProduct.find(filter).sort(sortOptions).lean();
+
+            console.log('Found products:', products.length); // Debug log
 
             new OK({
                 message: 'Lọc sản phẩm thành công',
                 metadata: products,
             }).send(res);
         } catch (error) {
+            console.error('Filter error:', error); // Debug log
             new BadRequestError({
                 message: 'Lỗi khi lọc sản phẩm',
                 error: error.message,

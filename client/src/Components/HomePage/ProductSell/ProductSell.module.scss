@@ -2,6 +2,8 @@
     width: 90%;
     max-width: 1200px;
     margin: 50px auto;
+    padding: 20px;
+    background-color: #ffffff;
 }
 
 .section-title {
@@ -41,7 +43,7 @@
     border-radius: 12px;
     padding: 25px 15px;
     text-align: center;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
     text-decoration: none;
     color: #333;
@@ -49,10 +51,11 @@
     flex-direction: column;
     align-items: center;
     gap: 15px;
+    overflow: hidden;
 
     &:hover {
         transform: translateY(-5px);
-        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 
         .category-icon, .brand-icon {
             background: #e67e22;

@@ -1,15 +1,14 @@
 import classNames from 'classnames/bind';
 import styles from './SideHome.module.scss';
+import Slider from 'react-slick';
+import 'slick-carousel/slick/slick.css';
+import 'slick-carousel/slick/slick-theme.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 
-import imgBanner11 from '../../../assets/images/imgBanner11.png';
-import imgBanner12 from '../../../assets/images/imgBanner12.png';
-import imgBanner23 from '../../../assets/images/imgBanner13.png';
-
-import Slider from 'react-slick';
-import "slick-carousel/slick/slick.css";
-import "slick-carousel/slick/slick-theme.css";
+import imgBanner1 from '../../../assets/images/slider_1.webp';
+import imgBanner2 from '../../../assets/images/slide-img1.webp';
+import imgBanner3 from '../../../assets/images/slide-img3.webp';
 
 const cx = classNames.bind(styles);
 
@@ -53,13 +52,19 @@ function SideHome() {
             <div className={cx('slider-wrapper')}>
                 <Slider {...settings}>
                     <div className={cx('slide')}>
-                        <img src={imgBanner11} alt="Banner 1" />
+                        <div className={cx('image-wrapper')}>
+                            <img src={imgBanner1} alt="Banner 1" />
+                        </div>
                     </div>
                     <div className={cx('slide')}>
-                        <img src={imgBanner12} alt="Banner 2" />
+                        <div className={cx('image-wrapper')}>
+                            <img src={imgBanner2} alt="Banner 2" />
+                        </div>
                     </div>
                     <div className={cx('slide')}>
-                        <img src={imgBanner23} alt="Banner 3" />
+                        <div className={cx('image-wrapper')}>
+                            <img src={imgBanner3} alt="Banner 3" />
+                        </div>
                     </div>
                 </Slider>
             </div>
