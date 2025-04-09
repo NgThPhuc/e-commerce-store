@@ -118,6 +118,21 @@ function ProductSell() {
                     ))}
                 </Grid>
 
+                {dataProducts.length > 0 && (
+                    <Box sx={{ mt: 8 }}>
+                        <Typography variant="h4" gutterBottom align="center" sx={{ mb: 4 }}>
+                            Sản phẩm mới
+                        </Typography>
+                        <Grid container spacing={3}>
+                            {dataProducts.slice(0, 8).map((product) => (
+                                <Grid item xs={12} sm={6} md={3} key={product._id}>
+                                    <CardBody data={product} />
+                                </Grid>
+                            ))}
+                        </Grid>
+                    </Box>
+                )}
+
                 <Typography variant="h4" gutterBottom align="center" sx={{ mt: 8, mb: 4 }}>
                     Thương hiệu nổi bật
                 </Typography>
@@ -157,20 +172,7 @@ function ProductSell() {
                     ))}
                 </Grid>
 
-                {dataProducts.length > 0 && (
-                    <Box sx={{ mt: 8 }}>
-                        <Typography variant="h4" gutterBottom align="center" sx={{ mb: 4 }}>
-                            Sản phẩm nổi bật
-                        </Typography>
-                        <Grid container spacing={3}>
-                            {dataProducts.slice(0, 8).map((product) => (
-                                <Grid item xs={12} sm={6} md={3} key={product._id}>
-                                    <CardBody data={product} />
-                                </Grid>
-                            ))}
-                        </Grid>
-                    </Box>
-                )}
+                
             </Box>
         </Container>
     );

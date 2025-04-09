@@ -1,6 +1,6 @@
 import classNames from 'classnames/bind';
 import styles from './AddProduct.module.scss';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Editor } from '@tinymce/tinymce-react';
 import {
     Box,
@@ -22,11 +22,13 @@ import {
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { requestCreateProduct, requestUploadImage } from '../../../../../config/request';
+
 import toast, { Toaster } from 'react-hot-toast';
 
 const cx = classNames.bind(styles);
 
 function AddProduct() {
+    const editorRef = useRef(null);
     const [productData, setProductData] = useState({
         name: '',
         category: '',
@@ -42,8 +44,6 @@ function AddProduct() {
             material: '',
         },
     });
-
-    const [loading, setLoading] = useState(false);
 
     const categories = [
         { value: 'model_kit', label: 'Model Kit' },
@@ -61,120 +61,194 @@ function AddProduct() {
         { value: 'other', label: 'Other' },
     ];
 
-    const grades = [
-        { value: 'hg', label: 'High Grade (HG)' },
-        { value: 'rg', label: 'Real Grade (RG)' },
-        { value: 'mg', label: 'Master Grade (MG)' },
-        { value: 'pg', label: 'Perfect Grade (PG)' },
-    ];
+    const categoryAttributes = {
+        model_kit: [
+            { name: 'scale', label: 'Tỷ lệ', type: 'text' },
+            { name: 'series', label: 'Series', type: 'text' },
+            { name: 'grade', label: 'Grade', type: 'text' },
+        ],
+        metal_build: [
+            { name: 'scale', label: 'Tỷ lệ', type: 'text' },
+            { name: 'series', label: 'Series', type: 'text' },
+        ],
+        figure: [
+            { name: 'scale', label: 'Tỷ lệ', type: 'text' },
+            { name: 'series', label: 'Series', type: 'text' },
+        ],
+        dung_cu: [
+            { name: 'material', label: 'Chất liệu', type: 'text' },
+            { name: 'series', label: 'Series', type: 'text' },
+        ],
+        phu_kien: [
+            { name: 'material', label: 'Chất liệu', type: 'text' },
+            { name: 'series', label: 'Series', type: 'text' },
+        ],
+    };
 
-    const handleInputChange = (field, value) => {
-        if (field.includes('.')) {
-            const [parent, child] = field.split('.');
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        
+        if (name.startsWith('attr_')) {
+            const attributeName = name.replace('attr_', '');
             setProductData((prev) => ({
                 ...prev,
-                [parent]: {
-                    ...prev[parent],
-                    [child]: value,
+                attributes: {
+                    ...prev.attributes,
+                    [attributeName]: value,
+                },
+            }));
+        } else if (name === 'category') {
+            // Reset attributes when category changes
+            setProductData((prev) => ({
+                ...prev,
+                [name]: value,
+                attributes: {
+                    scale: '',
+                    series: '',
+                    grade: '',
+                    material: '',
                 },
             }));
         } else {
             setProductData((prev) => ({
                 ...prev,
-                [field]: value,
+                [name]: value,
             }));
         }
     };
 
-    const handleImageUpload = async (event) => {
-        const files = event.target.files;
-        if (files.length > 0) {
-            setLoading(true);
-            try {
-                const formData = new FormData();
-                formData.append('image', files[0]);
-
-                const response = await requestUploadImage(formData);
-                if (response.metadata) {
-                    setProductData((prev) => ({
-                        ...prev,
-                        images: [...prev.images, response.metadata],
-                    }));
-                    toast.success('Tải ảnh lên thành công');
-                }
-            } catch (error) {
-                console.error('Error uploading image:', error);
-                toast.error('Lỗi khi tải ảnh lên');
-            } finally {
-                setLoading(false);
-            }
-        }
-    };
-
-    const handleRemoveImage = (index) => {
+    const handleEditorChange = (content) => {
         setProductData((prev) => ({
             ...prev,
-            images: prev.images.filter((_, i) => i !== index),
+            description: content,
         }));
     };
 
-    const handleSubmit = async (event) => {
-        event.preventDefault();
-        setLoading(true);
+    const handleImageChange = async (e) => {
+        const files = Array.from(e.target.files);
+        const formData = new FormData();
+        files.forEach((file) => {
+            formData.append('images', file);
+        });
+        formData.append('typeImages', 'product');
+        const res = await requestUploadImage(formData);
+        setProductData((prev) => ({
+            ...prev,
+            images: [...prev.images, ...res.metadata],
+        }));
+    };
 
+    const handleRemoveImage = (indexToRemove) => {
+        setProductData((prev) => ({
+            ...prev,
+            images: prev.images.filter((_, index) => index !== indexToRemove),
+        }));
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
         try {
-            const response = await requestCreateProduct(productData);
-            if (response.metadata) {
-                toast.success('Thêm sản phẩm thành công');
-                setProductData({
-                    name: '',
-                    category: '',
-                    brand: '',
-                    price: '',
-                    stock: '',
-                    description: '',
-                    images: [],
-                    attributes: {
-                        scale: '',
-                        series: '',
-                        grade: '',
-                        material: '',
-                    },
-                });
+            const res = await requestCreateProduct(productData);
+            toast.success(res.message);
+            // Reset form after successful submission
+            setProductData({
+                name: '',
+                category: '',
+                brand: '',
+                price: '',
+                stock: '',
+                description: '',
+                images: [],
+                attributes: {
+                    scale: '',
+                    series: '',
+                    grade: '',
+                    material: '',
+                },
+            });
+            // Reset editor content
+            if (editorRef.current) {
+                editorRef.current.setContent('Mô tả sản phẩm');
             }
         } catch (error) {
-            console.error('Error creating product:', error);
-            toast.error('Lỗi khi thêm sản phẩm');
-        } finally {
-            setLoading(false);
+            toast.error(error.response.data.message);
         }
     };
 
-    return (
-        <Box component="form" onSubmit={handleSubmit} sx={{ p: 3 }}>
-            <Typography variant="h5" gutterBottom>
-                Thêm sản phẩm mới
-            </Typography>
-            <Divider sx={{ mb: 3 }} />
+    const getPlaceholder = (category, attrName) => {
+        const placeholders = {
+            scale: {
+                model_kit: '1/144, 1/100, 1/60...',
+                metal_build: '1/100, 1/60...',
+                figure: '1/7, 1/8...',
+            },
+            series: {
+                model_kit: 'Gundam, Dragon Ball, One Piece...',
+                metal_build: 'Gundam, Evangelion...',
+                figure: 'Dragon Ball, One Piece, Naruto...',
+                dung_cu: 'Tamiya, Mr.Hobby...',
+                phu_kien: 'Action Base, Panel Line...',
+            },
+            grade: {
+                model_kit: 'HG, RG, MG, PG...',
+            },
+            material: {
+                dung_cu: 'Nhựa, Kim loại...',
+                phu_kien: 'Nhựa, Kim loại...',
+            },
+        };
 
-            <Grid container spacing={3}>
-                <Grid item xs={12} md={8}>
-                    <Paper sx={{ p: 3 }}>
-                        <Stack spacing={3}>
+        return placeholders[attrName]?.[category] || '';
+    };
+
+    return (
+        <Box className={cx('wrapper')} sx={{ p: 3, backgroundColor: '#f5f5f5', minHeight: '100vh' }}>
+            <Toaster />
+            <Paper
+                elevation={0}
+                sx={{
+                    p: 4,
+                    borderRadius: 2,
+                    backgroundColor: 'white',
+                    boxShadow: '0 2px 10px rgba(0,0,0,0.08)',
+                }}
+            >
+                <form onSubmit={handleSubmit}>
+                    <Grid container spacing={3}>
+                        <Grid item xs={12}>
+                            <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 500, color: '#455a64' }}>
+                                Thông tin cơ bản
+                            </Typography>
+                            <Divider sx={{ mb: 3 }} />
+                        </Grid>
+
+                        <Grid item xs={12} sm={6}>
                             <TextField
                                 required
                                 fullWidth
                                 label="Tên sản phẩm"
+                                name="name"
                                 value={productData.name}
-                                onChange={(e) => handleInputChange('name', e.target.value)}
+                                onChange={handleChange}
+                                variant="outlined"
+                                sx={{
+                                    '& .MuiOutlinedInput-root': {
+                                        '&:hover fieldset': {
+                                            borderColor: '#1a237e',
+                                        },
+                                    },
+                                }}
                             />
+                        </Grid>
 
+                        <Grid item xs={12} sm={6}>
                             <FormControl fullWidth required>
                                 <InputLabel>Danh mục</InputLabel>
                                 <Select
+                                    name="category"
                                     value={productData.category}
                                     label="Danh mục"
-                                    onChange={(e) => handleInputChange('category', e.target.value)}
+                                    onChange={handleChange}
                                 >
                                     {categories.map((category) => (
                                         <MenuItem key={category.value} value={category.value}>
@@ -183,13 +257,16 @@ function AddProduct() {
                                     ))}
                                 </Select>
                             </FormControl>
+                        </Grid>
 
+                        <Grid item xs={12} sm={6}>
                             <FormControl fullWidth required>
                                 <InputLabel>Thương hiệu</InputLabel>
                                 <Select
+                                    name="brand"
                                     value={productData.brand}
                                     label="Thương hiệu"
-                                    onChange={(e) => handleInputChange('brand', e.target.value)}
+                                    onChange={handleChange}
                                 >
                                     {brands.map((brand) => (
                                         <MenuItem key={brand.value} value={brand.value}>
@@ -198,166 +275,203 @@ function AddProduct() {
                                     ))}
                                 </Select>
                             </FormControl>
+                        </Grid>
 
-                            <Grid container spacing={2}>
-                                <Grid item xs={6}>
-                                    <TextField
-                                        required
-                                        fullWidth
-                                        type="number"
-                                        label="Giá"
-                                        value={productData.price}
-                                        onChange={(e) => handleInputChange('price', e.target.value)}
-                                        InputProps={{
-                                            inputProps: { min: 0 },
-                                        }}
-                                    />
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <TextField
-                                        required
-                                        fullWidth
-                                        type="number"
-                                        label="Số lượng trong kho"
-                                        value={productData.stock}
-                                        onChange={(e) => handleInputChange('stock', e.target.value)}
-                                        InputProps={{
-                                            inputProps: { min: 0 },
-                                        }}
-                                    />
-                                </Grid>
-                            </Grid>
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                required
+                                fullWidth
+                                label="Giá"
+                                name="price"
+                                type="number"
+                                value={productData.price}
+                                onChange={handleChange}
+                            />
+                        </Grid>
 
-                            {productData.category === 'model_kit' && (
-                                <FormControl fullWidth>
-                                    <InputLabel>Grade</InputLabel>
-                                    <Select
-                                        value={productData.attributes.grade}
-                                        label="Grade"
-                                        onChange={(e) => handleInputChange('attributes.grade', e.target.value)}
+                        <Grid item xs={12} sm={6}>
+                            <TextField
+                                required
+                                fullWidth
+                                label="Số lượng tồn kho"
+                                name="stock"
+                                type="number"
+                                value={productData.stock}
+                                onChange={handleChange}
+                            />
+                        </Grid>
+
+                        {productData.category && (
+                            <>
+                                <Grid item xs={12}>
+                                    <Typography
+                                        variant="subtitle1"
+                                        sx={{ mt: 2, mb: 2, fontWeight: 500, color: '#455a64' }}
                                     >
-                                        {grades.map((grade) => (
-                                            <MenuItem key={grade.value} value={grade.value}>
-                                                {grade.label}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            )}
+                                        Thông tin chi tiết
+                                    </Typography>
+                                    <Divider sx={{ mb: 3 }} />
+                                </Grid>
 
-                            {(productData.category === 'model_kit' ||
-                                productData.category === 'metal_build' ||
-                                productData.category === 'figure') && (
-                                <>
-                                    <TextField
-                                        fullWidth
-                                        label="Tỷ lệ"
-                                        value={productData.attributes.scale}
-                                        onChange={(e) => handleInputChange('attributes.scale', e.target.value)}
-                                        placeholder="Ví dụ: 1/144, 1/100"
-                                    />
-                                    <TextField
-                                        fullWidth
-                                        label="Series"
-                                        value={productData.attributes.series}
-                                        onChange={(e) => handleInputChange('attributes.series', e.target.value)}
-                                        placeholder="Ví dụ: Gundam, Dragon Ball"
-                                    />
-                                </>
-                            )}
-
-                            {(productData.category === 'dung_cu' || productData.category === 'phu_kien') && (
-                                <TextField
-                                    fullWidth
-                                    label="Chất liệu"
-                                    value={productData.attributes.material}
-                                    onChange={(e) => handleInputChange('attributes.material', e.target.value)}
-                                />
-                            )}
-
-                            <Typography variant="subtitle1" gutterBottom>
+                                {categoryAttributes[productData.category]?.map((attr) => (
+                                    <Grid item xs={12} sm={6} key={attr.name}>
+                                        <TextField
+                                            required
+                                            fullWidth
+                                            label={attr.label}
+                                            name={`attr_${attr.name}`}
+                                            type={attr.type}
+                                            value={productData.attributes[attr.name] || ''}
+                                            onChange={handleChange}
+                                            placeholder={getPlaceholder(productData.category, attr.name)}
+                                        />
+                                    </Grid>
+                                ))}
+                            </>
+                        )}
+                        <Grid item xs={12}>
+                            <Typography variant="subtitle1" sx={{ mt: 2, mb: 2, fontWeight: 500, color: '#455a64' }}>
                                 Mô tả sản phẩm
                             </Typography>
+                            <Divider sx={{ mb: 3 }} />
                             <Editor
-                                apiKey="tm5dadnc4s9g3p373vo61phwfnl3w5nli8ouwj0v2rnn6efj"
+                                apiKey="hfm046cu8943idr5fja0r5l2vzk9l8vkj5cp3hx2ka26l84x"
+                                onInit={(evt, editor) => editorRef.current = editor}
                                 init={{
-                                    height: 500,
-                                    menubar: false,
-                                    plugins: [
-                                        'advlist', 'autolink', 'lists', 'link', 'image', 'charmap', 'preview',
-                                        'anchor', 'searchreplace', 'visualblocks', 'code', 'fullscreen',
-                                        'insertdatetime', 'media', 'table', 'code', 'help', 'wordcount'
-                                    ],
-                                    toolbar: 'undo redo | blocks | ' +
-                                        'bold italic forecolor | alignleft aligncenter ' +
-                                        'alignright alignjustify | bullist numlist outdent indent | ' +
-                                        'removeformat | help',
-                                    content_style: 'body { font-family:Helvetica,Arial,sans-serif; font-size:14px }'
+                                    plugins:
+                                        'anchor autolink charmap codesample emoticons image link lists media searchreplace table visualblocks wordcount',
+                                    toolbar:
+                                        'undo redo | blocks fontfamily fontsize | bold italic underline strikethrough | link image media table | align lineheight | numlist bullist indent outdent | emoticons charmap | removeformat',
                                 }}
-                                value={productData.description}
-                                onEditorChange={(content) => handleInputChange('description', content)}
+                                initialValue="Mô tả sản phẩm"
+                                onEditorChange={handleEditorChange}
                             />
-                        </Stack>
-                    </Paper>
-                </Grid>
+                        </Grid>
 
-                <Grid item xs={12} md={4}>
-                    <Paper sx={{ p: 3 }}>
-                        <Stack spacing={3}>
-                            <Typography variant="subtitle1" gutterBottom>
+                        <Grid item xs={12}>
+                            <Typography variant="subtitle1" sx={{ mt: 2, mb: 2, fontWeight: 500, color: '#455a64' }}>
                                 Hình ảnh sản phẩm
                             </Typography>
+                            <Divider sx={{ mb: 3 }} />
 
-                            <Button
-                                component="label"
-                                variant="outlined"
-                                startIcon={<CloudUploadIcon />}
-                                sx={{ mb: 2 }}
-                                disabled={loading}
+                            <Box
+                                sx={{
+                                    border: '2px dashed #1a237e',
+                                    borderRadius: 2,
+                                    p: 3,
+                                    textAlign: 'center',
+                                    mb: 3,
+                                    backgroundColor: '#f5f5f5',
+                                }}
                             >
-                                Tải ảnh lên
-                                <input type="file" hidden accept="image/*" onChange={handleImageUpload} />
-                            </Button>
+                                <input
+                                    type="file"
+                                    hidden
+                                    multiple
+                                    accept="image/*"
+                                    id="image-upload"
+                                    onChange={handleImageChange}
+                                />
+                                <label htmlFor="image-upload">
+                                    <Button
+                                        component="span"
+                                        variant="outlined"
+                                        startIcon={<CloudUploadIcon />}
+                                        sx={{
+                                            color: '#1a237e',
+                                            borderColor: '#1a237e',
+                                            '&:hover': {
+                                                borderColor: '#1a237e',
+                                                backgroundColor: 'rgba(26, 35, 126, 0.04)',
+                                            },
+                                        }}
+                                    >
+                                        Tải lên hình ảnh
+                                    </Button>
+                                </label>
+                                <Typography variant="body2" sx={{ mt: 1, color: '#666' }}>
+                                    Hỗ trợ: JPG, PNG (Tối đa 5MB)
+                                </Typography>
+                            </Box>
+                        </Grid>
 
-                            <Stack spacing={2}>
-                                {productData.images.map((image, index) => (
-                                    <Card key={index}>
-                                        <CardMedia
-                                            component="img"
-                                            height="200"
-                                            image={image}
-                                            alt={`Product image ${index + 1}`}
-                                            sx={{ objectFit: 'contain' }}
-                                        />
-                                        <Box sx={{ p: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                        {productData.images.length > 0 && (
+                            <Grid item xs={12}>
+                                <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                                    {productData.images.map((image, index) => (
+                                        <Card
+                                            key={index}
+                                            sx={{
+                                                position: 'relative',
+                                                width: 150,
+                                                height: 150,
+                                                borderRadius: 2,
+                                            }}
+                                        >
+                                            <CardMedia
+                                                component="img"
+                                                image={image}
+                                                alt={`Preview ${index + 1}`}
+                                                sx={{
+                                                    height: '100%',
+                                                    objectFit: 'cover',
+                                                }}
+                                            />
                                             <IconButton
-                                                color="error"
+                                                size="small"
+                                                sx={{
+                                                    position: 'absolute',
+                                                    top: 8,
+                                                    right: 8,
+                                                    backgroundColor: 'rgba(255,255,255,0.8)',
+                                                    '&:hover': {
+                                                        backgroundColor: 'rgba(255,255,255,0.9)',
+                                                    },
+                                                }}
                                                 onClick={() => handleRemoveImage(index)}
-                                                disabled={loading}
                                             >
-                                                <DeleteIcon />
+                                                <DeleteIcon fontSize="small" />
                                             </IconButton>
-                                        </Box>
-                                    </Card>
-                                ))}
-                            </Stack>
-                        </Stack>
-                    </Paper>
+                                        </Card>
+                                    ))}
+                                </Box>
+                            </Grid>
+                        )}
 
-                    <Box sx={{ mt: 3 }}>
-                        <Button
-                            type="submit"
-                            variant="contained"
-                            fullWidth
-                            size="large"
-                            disabled={loading}
-                        >
-                            {loading ? 'Đang xử lý...' : 'Thêm sản phẩm'}
-                        </Button>
-                    </Box>
-                </Grid>
-            </Grid>
-            <Toaster position="top-right" />
+                        <Grid item xs={12}>
+                            <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+                                <Button
+                                    variant="outlined"
+                                    sx={{
+                                        minWidth: 120,
+                                        borderColor: '#1a237e',
+                                        color: '#1a237e',
+                                        '&:hover': {
+                                            borderColor: '#1a237e',
+                                            backgroundColor: 'rgba(26, 35, 126, 0.04)',
+                                        },
+                                    }}
+                                >
+                                    Hủy
+                                </Button>
+                                <Button
+                                    type="submit"
+                                    variant="contained"
+                                    sx={{
+                                        minWidth: 120,
+                                        backgroundColor: '#1a237e',
+                                        '&:hover': {
+                                            backgroundColor: '#0d1b6e',
+                                        },
+                                    }}
+                                >
+                                    Thêm sản phẩm
+                                </Button>
+                            </Box>
+                        </Grid>
+                    </Grid>
+                </form>
+            </Paper>
         </Box>
     );
 }
