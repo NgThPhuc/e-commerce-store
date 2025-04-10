@@ -12,6 +12,8 @@ import Blogs from '../Pages/Blogs/Blogs';
 import DetailBlog from '../Pages/DetailBlog/DetailBlog';
 import ForgotPassword from '../Pages/ForgotPassword/ForgotPassword';
 import Contact from '../Pages/Contact/Contact';
+import Success from '../Pages/Success/Success';
+import Cancel from '../Pages/Cancel/Cancel';
 
 export const publicRoutes = [
     {
@@ -69,5 +71,13 @@ export const publicRoutes = [
     {
         path: '/admin',
         component: <DashBroad />,
+    },
+    {
+        path: '/success',
+        component: <Success />,
+    },
+    {
+        path: '/cancel',
+        component: <Cancel />,
     },
 ];

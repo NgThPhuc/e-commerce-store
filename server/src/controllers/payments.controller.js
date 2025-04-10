@@ -4,6 +4,7 @@ const modelProduct = require('../models/product.models');
 
 const { BadRequestError } = require('../core/error.response');
 const { OK } = require('../core/success.response');
+const { createToken, createRefreshToken } = require('../services/tokenSevices');
 
 const axios = require('axios');
 const crypto = require('crypto');
@@ -113,56 +114,118 @@ class controllerPayments {
             });
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
-            const vnpayResponse = await vnpay.buildPaymentUrl({
-                vnp_Amount: findCart.totalPrice, //
-                vnp_IpAddr: '127.0.0.1', //
-                vnp_TxnRef: findCart._id,
-                vnp_OrderInfo: `${findCart._id}`,
-                vnp_OrderType: ProductCode.Other,
-                vnp_ReturnUrl: `http://localhost:3000/api/check-payment-vnpay`, //
-                vnp_Locale: VnpLocale.VN, // 'vn' hoặc 'en'
-                vnp_CreateDate: dateFormat(new Date()), // tùy chọn, mặc định là hiện tại
-                vnp_ExpireDate: dateFormat(tomorrow), // tùy chọn
-            });
-            new OK({ message: 'Thanh toán thông báo', metadata: vnpayResponse }).send(res);
+            try {
+                const vnpayResponse = await vnpay.buildPaymentUrl({
+                    vnp_Amount: findCart.totalPrice, //
+                    vnp_IpAddr: req.ip || '127.0.0.1', //
+                    vnp_TxnRef: findCart._id.toString(),
+                    vnp_OrderInfo: `Thanh toan don hang ${findCart._id}`,
+                    vnp_OrderType: ProductCode.Other,
+                    vnp_ReturnUrl: `http://localhost:3000/api/check-payment-vnpay`, //
+                    vnp_Locale: VnpLocale.VN, // 'vn' hoặc 'en'
+                    vnp_CreateDate: dateFormat(new Date()), // tùy chọn, mặc định là hiện tại
+                    vnp_ExpireDate: dateFormat(tomorrow), // tùy chọn
+                });
+                
+                // Store user ID in session for later retrieval
+                req.session = req.session || {};
+                req.session.paymentUserId = id;
+                
+                new OK({ message: 'Thanh toán thông báo', metadata: vnpayResponse }).send(res);
+            } catch (error) {
+                console.error('VNPay error:', error);
+                throw new BadRequestError('Có lỗi xảy ra khi tạo thanh toán VNPay');
+            }
         }
     }
 
     async checkPaymentMomo(req, res, next) {
-        const { orderInfo, resultCode } = req.query;
-        if (resultCode === '0') {
-            const result = orderInfo.split(' ')[2];
-            const findCart = await modelCart.findOne({ _id: result });
-            const newPayment = new modelPayments({
-                userId: findCart.userId,
-                products: findCart.product,
-                address: findCart.address,
-                phone: findCart.phone,
-                fullName: findCart.fullName,
-                typePayments: 'MOMO',
-            });
-            await newPayment.save();
-            await findCart.deleteOne();
-            return res.redirect(`http://localhost:5173/payment/${newPayment._id}`);
+        try {
+            const { orderId, resultCode } = req.query;
+            if (resultCode === '0') {
+                const { id } = req.user;
+                const findCart = await modelCart.findOne({ userId: id });
+                const newPayment = new modelPayments({
+                    userId: id,
+                    products: findCart.product,
+                    address: findCart.address,
+                    phone: findCart.phone,
+                    fullName: findCart.fullName,
+                    typePayments: 'MOMO',
+                    totalPrice: findCart.totalPrice,
+                    statusOrder: 'pending',
+                });
+                await newPayment.save();
+                await findCart.deleteOne();
+                
+                // Refresh tokens to ensure continued authentication
+                const token = await createToken({ id });
+                const refreshToken = await createRefreshToken({ id });
+                
+                res.cookie('token', token, {
+                    httpOnly: true,
+                    secure: true,
+                    sameSite: 'Strict',
+                    maxAge: 15 * 60 * 1000, // 15 phút
+                });
+                
+                res.cookie('refreshToken', refreshToken, {
+                    httpOnly: true,
+                    secure: true,
+                    sameSite: 'Strict',
+                    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
+                });
+                
+                return res.redirect('http://localhost:3000/success');
+            } else {
+                return res.redirect('http://localhost:3000/cancel');
+            }
+        } catch (error) {
+            next(error);
         }
     }
 
     async checkPaymentVnpay(req, res) {
-        const { vnp_ResponseCode, vnp_OrderInfo } = req.query;
-        if (vnp_ResponseCode === '00') {
-            const idCart = vnp_OrderInfo;
-            const findCart = await modelCart.findOne({ _id: idCart });
-            const newPayment = new modelPayments({
-                userId: findCart.userId,
-                products: findCart.product,
-                address: findCart.address,
-                phone: findCart.phone,
-                typePayments: 'VNPAY',
-                fullName: findCart.fullName,
-            });
-            await newPayment.save();
-            await findCart.deleteOne();
-            return res.redirect(`http://localhost:5173/payment/${newPayment._id}`);
+        try {
+            const { vnp_ResponseCode, vnp_TxnRef } = req.query;
+            
+            // Get the user ID from the transaction reference (cart ID)
+            const cartId = vnp_TxnRef;
+            const findCart = await modelCart.findById(cartId);
+            
+            if (!findCart) {
+                console.error('Cart not found for transaction:', cartId);
+                return res.redirect('http://localhost:3000/cancel?error=cart_not_found');
+            }
+            
+            const userId = findCart.userId;
+            
+            if (vnp_ResponseCode === '00') {
+                try {
+                    const newPayment = new modelPayments({
+                        userId: userId,
+                        products: findCart.product,
+                        address: findCart.address,
+                        phone: findCart.phone,
+                        fullName: findCart.fullName,
+                        typePayments: 'VNPAY',
+                        totalPrice: findCart.totalPrice,
+                        statusOrder: 'pending',
+                    });
+                    await newPayment.save();
+                    await findCart.deleteOne();
+                    
+                    return res.redirect('http://localhost:3000/success');
+                } catch (error) {
+                    console.error('Error saving payment:', error);
+                    return res.redirect('http://localhost:3000/cancel?error=payment_save_failed');
+                }
+            } else {
+                return res.redirect(`http://localhost:3000/cancel?code=${vnp_ResponseCode}`);
+            }
+        } catch (error) {
+            console.error('VNPay callback error:', error);
+            return res.redirect('http://localhost:3000/cancel?error=server_error');
         }
     }
 

@@ -18,6 +18,14 @@ const cx = classNames.bind(styles);
 
 function CartUser() {
     const { dataCart, fetchCart } = useStore();
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        // Set loading to false once dataCart is loaded
+        if (dataCart && Object.keys(dataCart).length > 0) {
+            setIsLoading(false);
+        }
+    }, [dataCart]);
 
     const handleDeleteProductCart = async (idProduct) => {
         try {
@@ -25,9 +33,27 @@ function CartUser() {
             toast.success(res.message);
             fetchCart();
         } catch (error) {
-            toast.error(error.response.data.message);
+            toast.error(error.response?.data?.message || 'Có lỗi xảy ra khi xóa sản phẩm');
         }
     };
+
+    // Show loading state while data is being fetched
+    if (isLoading && (!dataCart || !dataCart.data)) {
+        return (
+            <div className={cx('wrapper')}>
+                <Toaster />
+                <header>
+                    <Header />
+                </header>
+                <div className={cx('loading')}>
+                    <p>Đang tải dữ liệu...</p>
+                </div>
+                <footer>
+                    <Footer />
+                </footer>
+            </div>
+        );
+    }
 
     return (
         <div className={cx('wrapper')}>
@@ -35,10 +61,10 @@ function CartUser() {
             <header>
                 <Header />
             </header>
-            {dataCart?.data?.length === 0 ? (
+            {!dataCart?.data || dataCart?.data?.length === 0 ? (
                 <div className={cx('cart-empty')}>
                     <img src={cartEmpty} alt="" />
-                    <h4>“Hổng” có gì trong giỏ hết</h4>
+                    <h4>"Hổng" có gì trong giỏ hết</h4>
                     <p>Về trang cửa hàng để chọn mua sản phẩm bạn nhé!!</p>
                     <Link to={'/category'}>
                         <Button variant="contained">Mua sắm ngay</Button>
@@ -60,12 +86,12 @@ function CartUser() {
                             </thead>
                             <tbody>
                                 {dataCart?.data?.map((item) => (
-                                    <tr key={item.id}>
+                                    <tr key={item._id}>
                                         <td>{item.name}</td>
                                         <td>
                                             <img
                                                 style={{ width: '100px', height: '100px', objectFit: 'cover' }}
-                                                src={item.images[0]}
+                                                src={item.images && item.images.length > 0 ? item.images[0] : ''}
                                                 alt=""
                                             />
                                         </td>

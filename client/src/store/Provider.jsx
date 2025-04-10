@@ -8,30 +8,60 @@ import { requestAuth, requestGetCart } from '../config/request';
 
 export function Provider({ children }) {
     const [dataUser, setDataUser] = useState({});
-
-    const [dataCart, setDataCart] = useState([]);
+    const [dataCart, setDataCart] = useState({ data: [], totalPrice: 0 });
+    const [isLoading, setIsLoading] = useState(true);
 
     const fetchDataCart = async () => {
-        const res = await requestGetCart();
-        setDataCart(res.metadata.newData);
+        try {
+            const res = await requestGetCart();
+            if (res && res.metadata && res.metadata.newData) {
+                setDataCart(res.metadata.newData);
+            }
+        } catch (error) {
+            console.error("Error fetching cart data:", error);
+            // Set default empty cart data on error
+            setDataCart({ data: [], totalPrice: 0 });
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const fetchAuth = async () => {
-        const res = await requestAuth();
-        const bytes = CryptoJS.AES.decrypt(res.metadata.auth, import.meta.env.VITE_SECRET_CRYPTO);
-        const originalText = bytes.toString(CryptoJS.enc.Utf8);
-        const user = JSON.parse(originalText);
-        setDataUser(user);
+        try {
+            const res = await requestAuth();
+            if (res && res.metadata && res.metadata.auth) {
+                const bytes = CryptoJS.AES.decrypt(res.metadata.auth, import.meta.env.VITE_SECRET_CRYPTO);
+                const originalText = bytes.toString(CryptoJS.enc.Utf8);
+                const user = JSON.parse(originalText);
+                setDataUser(user);
+            }
+        } catch (error) {
+            console.error("Error fetching auth data:", error);
+            setDataUser({});
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     useEffect(() => {
         const token = cookies.get('logged');
 
         if (!token) {
+            setIsLoading(false);
             return;
         }
-        fetchAuth();
-        fetchDataCart();
+        
+        const initializeData = async () => {
+            try {
+                await Promise.all([fetchAuth(), fetchDataCart()]);
+            } catch (error) {
+                console.error("Error initializing data:", error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        
+        initializeData();
     }, []);
 
     return (
@@ -41,6 +71,7 @@ export function Provider({ children }) {
                 fetchAuth,
                 dataCart,
                 fetchCart: fetchDataCart,
+                isLoading
             }}
         >
             {children}

@@ -1,0 +1,82 @@
+.wrapper {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.success-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 40px 20px;
+    background-color: #f8f9fa;
+}
+
+.success-card {
+    background-color: white;
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    padding: 40px;
+    text-align: center;
+    max-width: 600px;
+    width: 100%;
+}
+
+.success-icon {
+    margin-bottom: 20px;
+}
+
+.check-icon {
+    font-size: 80px;
+    color: #4CAF50;
+}
+
+.success-card h1 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 28px;
+}
+
+.success-card p {
+    color: #666;
+    margin-bottom: 10px;
+    font-size: 16px;
+    line-height: 1.5;
+}
+
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 30px;
+    flex-wrap: wrap;
+}
+
+.continue-shopping, .view-orders {
+    display: inline-block;
+    padding: 12px 24px;
+    border-radius: 5px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.continue-shopping {
+    background-color: #4CAF50;
+    color: white;
+    
+    &:hover {
+        background-color: #3e8e41;
+    }
+}
+
+.view-orders {
+    background-color: #f1f1f1;
+    color: #333;
+    border: 1px solid #ddd;
+    
+    &:hover {
+        background-color: #e1e1e1;
+    }
+}

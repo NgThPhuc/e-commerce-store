@@ -42,24 +42,74 @@ class controllerCart {
     }
 
     async getCart(req, res) {
-        const { id } = req.user;
-        const cart = await modelCart.findOne({ userId: id });
-        if (!cart) {
-            throw new BadRequestError('Không tìm thấy giỏ hàng');
+        try {
+            const { id } = req.user;
+            const cart = await modelCart.findOne({ userId: id });
+            
+            // If cart doesn't exist, return empty data instead of throwing error
+            if (!cart) {
+                return new OK({ 
+                    message: 'Giỏ hàng trống', 
+                    metadata: { 
+                        newData: {
+                            data: [],
+                            totalPrice: 0
+                        }
+                    } 
+                }).send(res);
+            }
+
+            // Use try-catch for each product to handle cases where products might be deleted
+            const data = await Promise.all(
+                cart.product.map(async (item) => {
+                    try {
+                        const product = await modelProduct.findById(item.productId);
+                        if (!product) {
+                            // If product not found, return minimal info to avoid breaking the UI
+                            return { 
+                                _id: item.productId, 
+                                name: "Sản phẩm không tồn tại", 
+                                price: 0, 
+                                images: [], 
+                                quantity: item.quantity 
+                            };
+                        }
+                        return { ...product._doc, quantity: item.quantity };
+                    } catch (error) {
+                        // Handle any errors with individual products
+                        return { 
+                            _id: item.productId, 
+                            name: "Sản phẩm không tồn tại", 
+                            price: 0, 
+                            images: [], 
+                            quantity: item.quantity 
+                        };
+                    }
+                }),
+            );
+
+            const newData = {
+                data,
+                totalPrice: cart.totalPrice,
+                fullName: cart.fullName || '',
+                phone: cart.phone || '',
+                address: cart.address || ''
+            };
+            
+            new OK({ message: 'Thành công', metadata: { newData } }).send(res);
+        } catch (error) {
+            // Handle any unexpected errors
+            console.error("Error in getCart:", error);
+            new OK({ 
+                message: 'Có lỗi xảy ra', 
+                metadata: { 
+                    newData: {
+                        data: [],
+                        totalPrice: 0
+                    }
+                } 
+            }).send(res);
         }
-
-        const data = await Promise.all(
-            cart.product.map(async (item) => {
-                const product = await modelProduct.findById(item.productId);
-                return { ...product._doc, quantity: item.quantity };
-            }),
-        );
-
-        const newData = {
-            data,
-            totalPrice: cart.totalPrice,
-        };
-        new OK({ message: 'Thành công', metadata: { newData } }).send(res);
     }
 
     async deleteProductCart(req, res) {

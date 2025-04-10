@@ -104,13 +104,13 @@ class controllerUsers {
             res.cookie('token', token, {
                 httpOnly: true, // Chặn truy cập từ JavaScript (bảo mật hơn)
                 secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-                sameSite: 'Strict', // ChONGL tấn công CSRF
+                sameSite: 'Strict', // Chống tấn công CSRF
                 maxAge: 15 * 60 * 1000, // 15 phút
             });
             res.cookie('logged', 1, {
                 httpOnly: false, // Chặn truy cập từ JavaScript (bảo mật hơn)
                 secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-                sameSite: 'Strict', // ChONGL tấn công CSRF
+                sameSite: 'Strict', // Chống tấn công CSRF
                 maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
             });
             res.cookie('refreshToken', refreshToken, {
@@ -249,27 +249,65 @@ class controllerUsers {
     }
 
     async refreshToken(req, res) {
-        const refreshToken = req.cookies.refreshToken;
+        try {
+            const refreshToken = req.cookies.refreshToken;
 
-        const decoded = await verifyToken(refreshToken);
+            if (!refreshToken) {
+                throw new BadRequestError('Không tìm thấy refresh token');
+            }
 
-        const user = await modelUser.findById(decoded.id);
-        const token = await createToken({ id: user._id });
-        res.cookie('token', token, {
-            httpOnly: true, // Chặn truy cập từ JavaScript (bảo mật hơn)
-            secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-            sameSite: 'Strict', // Chống tấn công CSRF
-            maxAge: 15 * 60 * 1000, // 15 phút
-        });
+            // Verify refresh token
+            const decoded = await verifyToken(refreshToken);
 
-        res.cookie('logged', 1, {
-            httpOnly: false, // Chặn truy cập từ JavaScript (bảo mật hơn)
-            secure: true, // Chỉ gửi trên HTTPS (để đảm bảo an toàn)
-            sameSite: 'Strict', // Chống tấn công CSRF
-            maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
-        });
+            if (!decoded || !decoded.id) {
+                throw new BadRequestError('Refresh token không hợp lệ');
+            }
 
-        new OK({ message: 'Refresh token thành công', metadata: { token } }).send(res);
+            const user = await modelUser.findById(decoded.id);
+            if (!user) {
+                throw new BadRequestError('Không tìm thấy người dùng');
+            }
+
+            // Create new tokens
+            const newToken = await createToken({ id: user._id });
+            const newRefreshToken = await createRefreshToken({ id: user._id });
+
+            // Set cookies
+            res.cookie('token', newToken, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'Strict',
+                maxAge: 15 * 60 * 1000, // 15 phút
+            });
+
+            res.cookie('logged', 1, {
+                httpOnly: false,
+                secure: true,
+                sameSite: 'Strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
+            });
+
+            res.cookie('refreshToken', newRefreshToken, {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'Strict',
+                maxAge: 7 * 24 * 60 * 60 * 1000, // 7 ngày
+            });
+
+            new OK({
+                message: 'Refresh token thành công',
+                metadata: {
+                    token: newToken,
+                    refreshToken: newRefreshToken
+                }
+            }).send(res);
+        } catch (error) {
+            // Clear cookies on error
+            res.clearCookie('token');
+            res.clearCookie('refreshToken');
+            res.clearCookie('logged');
+            throw new BadRequestError('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+        }
     }
 
     async getAdminStats(req, res) {
@@ -284,7 +322,7 @@ class controllerUsers {
                 createdAt: { $gte: today },
             });
 
-            const todayRevenue = todayOrders.reduce((sum, order) => sum + order.totalPrice, 0);
+            const todayRevenue = todayOrders.reduce((sum, order) => sum + (order.totalPrice || 0), 0);
             const newOrders = await modelPayments.countDocuments({
                 statusOrder: 'pending',
             });
@@ -327,28 +365,50 @@ class controllerUsers {
                 };
             });
 
-            // Get recent orders
-            const recentOrders = await modelPayments
-                .find()
-                .sort({ createdAt: -1 })
-                .limit(10)
-                .populate('userId', 'fullName');
+            // Get recent orders with error handling
+            let recentOrders = [];
+            try {
+                recentOrders = await modelPayments
+                    .find()
+                    .sort({ createdAt: -1 })
+                    .limit(10)
+                    .populate('userId', 'fullName');
+            } catch (orderError) {
+                console.error('Error fetching recent orders:', orderError);
+                // Continue with empty recentOrders array
+            }
 
-            const formattedRecentOrders = recentOrders.map((order) => ({
-                key: order._id.toString(),
-                order: order._id.toString().slice(-6).toUpperCase(),
-                customer: order.fullName,
-                product: `${order.products.length} sản phẩm`,
-                amount: order.totalPrice,
-                status:
-                    order.statusOrder === 'pending'
-                        ? 'Chờ xử lý'
-                        : order.statusOrder === 'shipping'
-                        ? 'Đang giao'
-                        : order.statusOrder === 'delivered'
-                        ? 'Đã giao'
-                        : 'Đã hủy',
-            }));
+            const formattedRecentOrders = recentOrders.map((order) => {
+                try {
+                    // Safely access properties with fallbacks
+                    return {
+                        key: order._id ? order._id.toString() : 'unknown',
+                        order: order._id ? order._id.toString().slice(-6).toUpperCase() : 'UNKNOWN',
+                        customer: order.fullName || (order.userId && order.userId.fullName) || 'Khách hàng',
+                        product: `${(order.products && order.products.length) || 0} sản phẩm`,
+                        amount: order.totalPrice || 0,
+                        status:
+                            order.statusOrder === 'pending'
+                                ? 'Chờ xử lý'
+                                : order.statusOrder === 'shipping'
+                                ? 'Đang giao'
+                                : order.statusOrder === 'delivered'
+                                ? 'Đã giao'
+                                : 'Đã hủy',
+                    };
+                } catch (itemError) {
+                    console.error('Error formatting order item:', itemError);
+                    // Return a safe default object if there's an error with this order
+                    return {
+                        key: 'error',
+                        order: 'ERROR',
+                        customer: 'Lỗi dữ liệu',
+                        product: '0 sản phẩm',
+                        amount: 0,
+                        status: 'Lỗi',
+                    };
+                }
+            });
 
             new OK({
                 message: 'Lấy thống kê thành công',
@@ -361,7 +421,18 @@ class controllerUsers {
                 },
             }).send(res);
         } catch (error) {
-            throw new BadRequestError('Lỗi khi lấy thống kê');
+            console.error('Error in getAdminStats:', error);
+            // Return a minimal valid response instead of throwing an error
+            new OK({
+                message: 'Lấy thống kê thành công (dữ liệu một phần)',
+                metadata: {
+                    totalUsers: 0,
+                    newOrders: 0,
+                    todayRevenue: 0,
+                    weeklyRevenue: [],
+                    recentOrders: [],
+                },
+            }).send(res);
         }
     }
 

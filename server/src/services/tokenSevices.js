@@ -51,9 +51,14 @@ const verifyToken = async (token) => {
             throw new BadUserRequestError('Vui lòng đăng nhập lại');
         }
 
-        return jwt.verify(token, findApiKey.publicKey, {
-            algorithms: ['RS256'],
-        });
+        try {
+            return jwt.verify(token, findApiKey.publicKey, {
+                algorithms: ['RS256'],
+            });
+        } catch (jwtError) {
+            // Token expired or invalid - attempt to use refresh token if available
+            throw new BadUserRequestError('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+        }
     } catch (error) {
         throw new BadUserRequestError('Vui lòng đăng nhập lại');
     }

@@ -1,6 +1,7 @@
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-const genAI = new GoogleGenerativeAI('AIzaSyDzlv4O3bB7lioMd3FnsBN-E5RaW_gNSGQ');
+//api chatbot
+const genAI = new GoogleGenerativeAI('AIzaSyDE1vCLqOy6LFLqpB8PSyPDIINNg-rFVUQ');
 const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
 const modelProduct = require('../models/product.models');
